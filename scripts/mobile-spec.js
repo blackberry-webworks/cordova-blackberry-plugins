@@ -38,7 +38,7 @@ function overwriteCordovaJS(done) {
     }
 }
 
-module.exports = function (branch, targetName, targetIP, targetType, targetPassword) {
+module.exports = function (branch, targetName, targetIP, targetType, targetPassword, mobileSpecBranch) {
     var tasks = jWorkflow.order(),
         preservingProject = false,
         projectFileBackuped = path.join(projectPath, '..', 'project.json'),
@@ -61,7 +61,7 @@ module.exports = function (branch, targetName, targetIP, targetType, targetPassw
         })
     .andThen(function (prev, baton) {
         baton.take();
-        prjUtils.setupMobileSpecRepo(branch ? branch : 'master', function () {
+        prjUtils.setupMobileSpecRepo(mobileSpecBranch ? mobileSpecBranch : 'master', function () {
             baton.pass();
         });
     })
@@ -96,16 +96,6 @@ module.exports = function (branch, targetName, targetIP, targetType, targetPassw
     .andThen(function (prev, baton) {
         baton.take();
         overwriteCordovaJS(function () {
-            baton.pass();
-        });
-    })
-    .andThen(function (prev, baton) {
-        var plugins = [
-            "com.blackberry.jpps",
-            "com.blackberry.utils"
-        ];
-        baton.take();
-        prjUtils.addPlugins(projectPath, plugins, function () {
             baton.pass();
         });
     })
