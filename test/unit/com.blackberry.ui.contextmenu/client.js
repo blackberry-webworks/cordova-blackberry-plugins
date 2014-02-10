@@ -31,7 +31,10 @@ describe("com.blackberry.ui.contextmenu client", function () {
             }),
             require: function () {
                 return cordova.exec;
-            }
+            },
+            addDocumentEventHandler: jasmine.createSpy().andReturn({
+                onHasSubscribersChange: jasmine.createSpy()
+            })
         };
         client = require(_apiDir + "/www/client");
     });
@@ -73,6 +76,7 @@ describe("com.blackberry.ui.contextmenu client", function () {
         expect(client.ACTION_SAVE_LINK_AS).toEqual("SaveLinkAs");
         expect(client.ACTION_VIEW_IMAGE).toEqual("ViewImage");
         expect(client.ACTION_SELECT).toEqual("Select");
+        expect(client.ACTION_MENU_SERVICE).toEqual("MenuService");
     });
 
     it("Cannot add a menu item without a context", function () {
@@ -118,5 +122,24 @@ describe("com.blackberry.ui.contextmenu client", function () {
         var actionId = 'OpenLink';
         client.clearOverride(actionId);
         expect(cordova.exec).toHaveBeenCalledWith(jasmine.any(Function), jasmine.any(Function), _ID, 'clearOverride', {actionId: actionId});
+    });
+
+    it("can disable a platform provided item", function () {
+        var context = client.CONTEXT_ALL,
+            actionId = client.ACTION_OPEN_LINK;
+        client.disablePlatformItem(context, actionId);
+        expect(cordova.exec).toHaveBeenCalledWith(jasmine.any(Function), jasmine.any(Function), _ID, 'disablePlatformItem', {context: context, actionId: actionId});
+    });
+
+    it("can enable a disabled platform provided item", function () {
+        var context = client.CONTEXT_ALL,
+            actionId = client.ACTION_OPEN_LINK;
+        client.enablePlatformItem(context, actionId);
+        expect(cordova.exec).toHaveBeenCalledWith(jasmine.any(Function), jasmine.any(Function), _ID, 'enablePlatformItem', {context: context, actionId: actionId});
+    });
+
+    it("can list the disabled platform provided item", function () {
+        client.listDisabledPlatformItems();
+        expect(cordova.exec).toHaveBeenCalledWith(jasmine.any(Function), jasmine.any(Function), _ID, 'listDisabledPlatformItems');
     });
 });

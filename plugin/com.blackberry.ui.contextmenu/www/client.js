@@ -19,7 +19,27 @@
 
 var contextmenu = {},
     exec = cordova.require("cordova/exec"),
-    _ID = "com.blackberry.ui.contextmenu";
+    _ID = "com.blackberry.ui.contextmenu",
+    noop = function () {},
+    events = ["contextmenuhidden"];
+
+events.map(function (eventName) {
+    var channel = cordova.addDocumentEventHandler(eventName),
+        success = function (data) {
+            channel.fire(data);
+        },
+        fail = function (error) {
+            console.log("Error initializing " + eventName + " listener: ", error);
+        };
+
+    channel.onHasSubscribersChange = function () {
+        if (this.numHandlers === 1) {
+            exec(success, fail, _ID, "startEvent", {eventName: eventName});
+        } else if (this.numHandlers === 0) {
+            exec(noop, noop, _ID, "stopEvent", {eventName: eventName});
+        }
+    };
+});
 
 function defineReadOnlyContext(field) {
     Object.defineProperty(contextmenu, "CONTEXT_" + field, {"value": field, "writable": false});
@@ -109,6 +129,18 @@ contextmenu.defineCustomContext = function (customContext, options) {
     exec(function () {}, function () {}, _ID, 'defineCustomContext', {context: customContext, options: options});
 };
 
+contextmenu.disablePlatformItem = function (context, actionId) {
+    return exec(function () {}, function () {}, _ID, 'disablePlatformItem', {context: context, actionId: actionId});
+};
+
+contextmenu.enablePlatformItem = function (context, actionId) {
+    return exec(function () {}, function () {}, _ID, 'enablePlatformItem', {context: context, actionId: actionId});
+};
+
+contextmenu.listDisabledPlatformItems = function () {
+    return exec(function () {}, function () {}, _ID, 'listDisabledPlatformItems');
+};
+
 defineReadOnlyContext("ALL");
 defineReadOnlyContext("LINK");
 defineReadOnlyContext("IMAGE_LINK");
@@ -128,5 +160,6 @@ defineReadOnlyActions("SAVE_IMAGE", "SaveImage");
 defineReadOnlyActions("COPY_IMAGE_LINK", "CopyImageLink");
 defineReadOnlyActions("VIEW_IMAGE", "ViewImage");
 defineReadOnlyActions("INSPECT_ELEMENT", "InspectElement");
+defineReadOnlyActions("MENU_SERVICE", "MenuService");
 
 module.exports = contextmenu;

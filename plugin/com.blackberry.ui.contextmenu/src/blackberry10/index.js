@@ -17,7 +17,16 @@
 var LIB_FOLDER = "../../lib/",
     contextmenu,
     _overlayWebView,
-    _utils = require(LIB_FOLDER + 'utils');
+    _utils = require(LIB_FOLDER + 'utils'),
+    _listeners = {},
+    _actionMap = {
+        contextmenuhidden: {
+            event: "contextmenu.hidden",
+            trigger: function (pluginResult) {
+                pluginResult.callbackOk(undefined, true);
+            }
+        }
+    };
 
 function enabled(success, fail, args, env) {
     var result = new PluginResult(args, env),
@@ -47,9 +56,9 @@ function overrideItem(success, fail, args, env) {
 }
 
 function clearOverride(success, fail, args, env) {
-    var result = new PluginResult(args, env),
-        actionId = JSON.parse(decodeURIComponent(args.actionId));
-    result.ok(_overlayWebView.contextMenu.clearOverride(actionId), false);
+    var result = new PluginResult(args, env);
+    args.actionId = JSON.parse(decodeURIComponent(args.actionId));
+    result.ok(_overlayWebView.contextMenu.clearOverride(args.actionId), false);
 }
 
 function addItem(success, fail, args, env) {
@@ -85,13 +94,85 @@ function defineCustomContext(success, fail, args, env) {
     result.ok(null, false);
 }
 
+function disablePlatformItem(success, fail, args, env) {
+    var result = new PluginResult(args, env);
+    args.context = JSON.parse(decodeURIComponent(args.context));
+    args.actionId = JSON.parse(decodeURIComponent(args.actionId));
+    result.ok(_overlayWebView.contextMenu.disablePlatformItem(args.context, args.actionId), false);
+}
+
+function enablePlatformItem(success, fail, args, env) {
+    var result = new PluginResult(args, env);
+    args.context = JSON.parse(decodeURIComponent(args.context));
+    args.actionId = JSON.parse(decodeURIComponent(args.actionId));
+    result.ok(_overlayWebView.contextMenu.enablePlatformItem(args.context, args.actionId), false);
+}
+
+function listDisabledPlatformItems(success, fail, args, env) {
+    var result = new PluginResult(args, env);
+    result.ok(_overlayWebView.contextMenu.listDisabledPlatformItems(), false);
+}
+
+function startEvent(success, fail, args, env) {
+    var result = new PluginResult(args, env),
+        eventName = JSON.parse(decodeURIComponent(args.eventName)),
+        context = _actionMap[eventName].context,
+        systemEvent = _actionMap[eventName].event,
+        listener = _actionMap[eventName].trigger.bind(null, result);
+
+    if (!systemEvent) {
+        return;
+    }
+
+    if (!_listeners[eventName]) {
+        _listeners[eventName] = {};
+    }
+
+    if (_listeners[eventName][env.webview.id]) {
+        //TODO: Change back to erroring out after reset is implemented
+        //result.error("Underlying listener for " + eventName + " already running for webview " + env.webview.id);
+        qnx.webplatform.core.events.un(systemEvent, _listeners[eventName][env.webview.id]);
+    }
+
+    qnx.webplatform.core.events.on(systemEvent, listener);
+    _listeners[eventName][env.webview.id] = listener;
+
+    result.noResult(true);
+}
+
+function stopEvent(success, fail, args, env) {
+    var result = new PluginResult(args, env),
+        eventName = JSON.parse(decodeURIComponent(args.eventName)),
+        listener = _listeners[eventName][env.webview.id],
+        context = _actionMap[eventName].context,
+        systemEvent = _actionMap[eventName].event;
+
+    if (!systemEvent) {
+        return;
+    }
+
+    if (!listener) {
+        result.error("Underlying listener for " + eventName + " never started for webview " + env.webview.id);
+    } else {
+        qnx.webplatform.core.events.un(systemEvent, listener);
+
+        delete _listeners[eventName][env.webview.id];
+        result.noResult(false);
+    }
+}
+
 contextmenu = {
     enabled: enabled,
     addItem: addItem,
     removeItem: removeItem,
     overrideItem: overrideItem,
     clearOverride: clearOverride,
-    defineCustomContext: defineCustomContext
+    disablePlatformItem: disablePlatformItem,
+    enablePlatformItem: enablePlatformItem,
+    listDisabledPlatformItems: listDisabledPlatformItems,
+    defineCustomContext: defineCustomContext,
+    startEvent: startEvent,
+    stopEvent: stopEvent
 };
 
 qnx.webplatform.getController().addEventListener('ui.init', function () {
