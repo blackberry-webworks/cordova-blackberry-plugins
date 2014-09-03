@@ -25,6 +25,10 @@ var _self = {},
     _channels = _events.map(function (eventName) {
         var channel = cordova.addDocumentEventHandler(eventName),
             success = function (data) {
+                if (eventName === "invoked") {
+                    //make invoked event sticky
+                    channel.state = 1;
+                }
                 channel.fire(data);
             };
         channel.onHasSubscribersChange = function () {
